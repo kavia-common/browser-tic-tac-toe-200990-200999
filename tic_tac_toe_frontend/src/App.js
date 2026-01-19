@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getAiMove, getGameOutcome } from "./ai/minimax";
+import ThemeToggle from "./components/ThemeToggle";
 
 function Square({ value, onClick, disabled }) {
   return (
@@ -64,6 +65,16 @@ function seriesWinnerFromScores({ xWins, oWins }) {
 export default function App() {
   const [squares, setSquares] = useState(() => emptyBoard());
   const [xIsNext, setXIsNext] = useState(true);
+
+  const [theme, setTheme] = useState(() => {
+    // Default to Light; load stored preference if present.
+    try {
+      const stored = window.localStorage.getItem("ttt_theme");
+      return stored === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
 
   const [mode, setMode] = useState("HUMAN_HUMAN"); // "HUMAN_HUMAN" | "HUMAN_AI"
   const [humanPlayer, setHumanPlayer] = useState("X"); // "X" | "O"
@@ -211,6 +222,15 @@ export default function App() {
     setAiThinking(false);
   }, [mode, humanPlayer]);
 
+  // Persist theme preference.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("ttt_theme", theme);
+    } catch {
+      // Ignore storage failures (private mode / blocked storage).
+    }
+  }, [theme]);
+
   // When toggling best-of-5 ON, start a fresh series (but keep mode/difficulty/humanPlayer).
   useEffect(() => {
     if (!bestOf5Enabled) return;
@@ -264,10 +284,19 @@ export default function App() {
     ? `Game ${series.gameNumber} of 5`
     : "Scoreboard";
 
+  // PUBLIC_INTERFACE
+  function handleToggleTheme() {
+    /** Toggle between Light and Dark themes; persists to localStorage. */
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  }
+
   return (
-    <div className="app">
+    <div className="app" data-theme={theme}>
       <div className="card">
-        <h1 className="title">Tic Tac Toe</h1>
+        <div className="titleRow">
+          <h1 className="title">Tic Tac Toe</h1>
+          <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
+        </div>
 
         <div className="scoreboard" aria-label="Scoreboard">
           <div className="scoreHeader">

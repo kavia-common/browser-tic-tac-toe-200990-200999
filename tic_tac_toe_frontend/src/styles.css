@@ -1,11 +1,74 @@
+/* Theme tokens
+   - Default: light
+   - Dark theme is enabled by setting [data-theme="dark"] on a top-level wrapper (App sets it).
+*/
+
 :root {
+  /* Light theme palette (matches existing style guide) */
   --bg: #f9fafb;
   --surface: #ffffff;
   --text: #111827;
-  --muted: #64748b;
+
   --primary: #3b82f6;
+  --secondary: #64748b;
+  --success: #06b6d4;
+  --error: #ef4444;
+
+  /* UI tokens */
+  --muted: var(--secondary);
   --ring: rgba(59, 130, 246, 0.25);
   --border: rgba(17, 24, 39, 0.10);
+  --grid-line: rgba(17, 24, 39, 0.10);
+
+  --input-bg: #ffffff;
+
+  --button-bg: #ffffff;
+  --button-text: var(--text);
+  --button-border: var(--border);
+  --button-hover-border: rgba(59, 130, 246, 0.35);
+  --button-hover-shadow: 0 10px 18px rgba(17, 24, 39, 0.06);
+
+  --primary-hover-border: rgba(59, 130, 246, 0.85);
+  --primary-hover-shadow: 0 12px 22px rgba(59, 130, 246, 0.18);
+
+  --score-pill-bg: rgba(59, 130, 246, 0.04);
+  --series-banner-border: rgba(59, 130, 246, 0.35);
+  --series-banner-bg: rgba(59, 130, 246, 0.08);
+
+  --focus-outline: 0 0 0 4px var(--ring);
+  --transition-fast: 160ms ease;
+}
+
+/* Dark theme palette + derived tokens */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #111827;
+  --text: #f8fafc;
+
+  --primary: #60a5fa;
+  --secondary: #94a3b8;
+  --success: #22d3ee;
+  --error: #f87171;
+
+  --muted: var(--secondary);
+  --ring: rgba(96, 165, 250, 0.28);
+  --border: rgba(148, 163, 184, 0.18);
+  --grid-line: rgba(148, 163, 184, 0.18);
+
+  --input-bg: rgba(255, 255, 255, 0.04);
+
+  --button-bg: rgba(255, 255, 255, 0.04);
+  --button-text: var(--text);
+  --button-border: var(--border);
+  --button-hover-border: rgba(96, 165, 250, 0.40);
+  --button-hover-shadow: 0 10px 18px rgba(0, 0, 0, 0.25);
+
+  --primary-hover-border: rgba(96, 165, 250, 0.75);
+  --primary-hover-shadow: 0 12px 22px rgba(96, 165, 250, 0.18);
+
+  --score-pill-bg: rgba(96, 165, 250, 0.10);
+  --series-banner-border: rgba(96, 165, 250, 0.40);
+  --series-banner-bg: rgba(96, 165, 250, 0.12);
 }
 
 * {
@@ -25,6 +88,13 @@ body {
     radial-gradient(900px 500px at 70% 5%, rgba(6, 182, 212, 0.08), transparent 55%),
     var(--bg);
   color: var(--text);
+
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+/* Dark mode should not keep the light radial glow; simplify for better contrast */
+[data-theme="dark"] body {
+  background: var(--bg);
 }
 
 .app {
@@ -32,6 +102,8 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
+
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .card {
@@ -41,10 +113,21 @@ body {
   border-radius: 16px;
   padding: 20px 20px 16px;
   box-shadow: 0 10px 25px rgba(17, 24, 39, 0.06);
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast), color var(--transition-fast);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .title {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 20px;
   letter-spacing: -0.02em;
 }
@@ -85,16 +168,19 @@ body {
   height: 34px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--input-bg);
   padding: 6px 10px;
   font-size: 13px;
   color: var(--text);
   outline: none;
+
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--ring);
+  box-shadow: var(--focus-outline);
 }
 
 .board {
@@ -108,19 +194,24 @@ body {
 
 .square {
   border-radius: 14px;
-  border: 1px solid var(--border);
-  background: #fff;
+  border: 1px solid var(--grid-line);
+  background: var(--button-bg);
   cursor: pointer;
   font-size: 32px;
   font-weight: 700;
   color: var(--text);
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color var(--transition-fast),
+    background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .square:hover:enabled {
   transform: translateY(-1px);
-  border-color: rgba(59, 130, 246, 0.35);
+  border-color: var(--button-hover-border);
   box-shadow: 0 8px 16px rgba(17, 24, 39, 0.06);
+}
+
+[data-theme="dark"] .square:hover:enabled {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
 }
 
 .square:focus {
@@ -128,7 +219,7 @@ body {
 }
 
 .square:focus-visible {
-  box-shadow: 0 0 0 4px var(--ring);
+  box-shadow: var(--focus-outline);
 }
 
 .square:disabled {
@@ -151,18 +242,27 @@ body {
   height: 38px;
   padding: 0 14px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: #fff;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
   cursor: pointer;
   font-weight: 600;
-  color: var(--text);
-  transition: box-shadow 120ms ease, transform 120ms ease, border-color 120ms ease;
+  color: var(--button-text);
+  transition: box-shadow 120ms ease, transform 120ms ease, border-color var(--transition-fast),
+    background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .button:hover {
   transform: translateY(-1px);
-  border-color: rgba(59, 130, 246, 0.35);
-  box-shadow: 0 10px 18px rgba(17, 24, 39, 0.06);
+  border-color: var(--button-hover-border);
+  box-shadow: var(--button-hover-shadow);
+}
+
+.button:focus {
+  outline: none;
+}
+
+.button:focus-visible {
+  box-shadow: var(--focus-outline);
 }
 
 .buttonPrimary {
@@ -171,9 +271,13 @@ body {
   color: #fff;
 }
 
+[data-theme="dark"] .buttonPrimary {
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
 .buttonPrimary:hover {
-  border-color: rgba(59, 130, 246, 0.85);
-  box-shadow: 0 12px 22px rgba(59, 130, 246, 0.18);
+  border-color: var(--primary-hover-border);
+  box-shadow: var(--primary-hover-shadow);
 }
 
 .scoreboard {
@@ -181,7 +285,10 @@ body {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface);
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .scoreHeader {
@@ -229,7 +336,10 @@ body {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(59, 130, 246, 0.04);
+  background: var(--score-pill-bg);
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .scoreKey {
@@ -257,9 +367,12 @@ body {
   font-size: 13px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid var(--series-banner-border);
+  background: var(--series-banner-bg);
   color: var(--text);
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .hint {
@@ -269,10 +382,111 @@ body {
   color: var(--muted);
 }
 
+/* Theme toggle UI (header control) */
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+
+  border: 1px solid var(--border);
+  background: var(--button-bg);
+  color: var(--text);
+  cursor: pointer;
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), box-shadow var(--transition-fast), transform 120ms ease;
+}
+
+.themeToggle:hover {
+  transform: translateY(-1px);
+  border-color: var(--button-hover-border);
+  box-shadow: var(--button-hover-shadow);
+}
+
+.themeToggle:focus {
+  outline: none;
+}
+
+.themeToggle:focus-visible {
+  box-shadow: var(--focus-outline);
+}
+
+.themeToggleLabel {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.themeSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.themeSwitchTrack {
+  width: 36px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.22);
+  border: 1px solid var(--border);
+  position: relative;
+
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+[data-theme="dark"] .themeSwitchTrack {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.themeSwitchThumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translate(0, -50%);
+  transition: transform var(--transition-fast), background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+/* When dark theme is active, slide thumb to the right and tint track */
+[data-theme="dark"] .themeSwitchThumb {
+  transform: translate(18px, -50%);
+}
+
+[data-theme="dark"] .themeSwitchTrack {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+[data-theme="dark"] .themeSwitchThumb {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.themeSwitchText {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 @media (max-width: 420px) {
   .board {
     grid-template-columns: repeat(3, 74px);
     grid-auto-rows: 74px;
     gap: 9px;
+  }
+
+  .titleRow {
+    align-items: flex-start;
+  }
+
+  .themeToggleLabel {
+    display: none;
   }
 }

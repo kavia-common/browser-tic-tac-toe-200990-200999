@@ -14,6 +14,13 @@ npm start
 ```
 Then open http://localhost:3000
 
+## Theme toggle (Light/Dark)
+A **Theme** toggle is available in the header. It switches between **Light** and **Dark** themes.
+
+- Default theme is **Light**
+- Your preference is saved in `localStorage` under the key `ttt_theme`
+- On page load, the app initializes from the stored value if present
+
 ## Scoreboard
 A compact scoreboard is shown above the board:
 - **X**: number of games won by X
