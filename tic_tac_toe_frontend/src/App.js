@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getBestMove, getGameOutcome } from "./ai/minimax";
+import { getAiMove, getGameOutcome } from "./ai/minimax";
 
 function Square({ value, onClick, disabled }) {
   return (
@@ -64,7 +64,7 @@ export default function App() {
 
   const [mode, setMode] = useState("HUMAN_HUMAN"); // "HUMAN_HUMAN" | "HUMAN_AI"
   const [humanPlayer, setHumanPlayer] = useState("X"); // "X" | "O"
-  const [difficulty, setDifficulty] = useState("Hard"); // "Easy" | "Medium" | "Hard"
+  const [difficulty, setDifficulty] = useState("Medium"); // "Easy" | "Medium" | "Hard"
   const [aiThinking, setAiThinking] = useState(false);
 
   const aiPlayer = useMemo(() => (humanPlayer === "X" ? "O" : "X"), [humanPlayer]);
@@ -126,8 +126,8 @@ export default function App() {
     const t = window.setTimeout(() => {
       if (cancelled) return;
 
-      const best = getBestMove(squares, aiPlayer, humanPlayer, { difficulty });
-      if (best == null) {
+      const move = getAiMove(squares, aiPlayer, humanPlayer, difficulty);
+      if (move == null) {
         setAiThinking(false);
         return;
       }
@@ -136,10 +136,10 @@ export default function App() {
         // Guard against stale moves if user restarted quickly.
         const { winner, isDraw } = getGameOutcome(prev);
         if (winner || isDraw) return prev;
-        if (prev[best] != null) return prev;
+        if (prev[move] != null) return prev;
 
         const next = prev.slice();
-        next[best] = aiPlayer;
+        next[move] = aiPlayer;
         return next;
       });
 
