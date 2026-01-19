@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getAiMove, getGameOutcome } from "./ai/minimax";
 
 function Square({ value, onClick, disabled }) {
@@ -29,22 +29,19 @@ function Board({ squares, onPlay, disabled }) {
   );
 }
 
-function nextPlayer(p) {
-  return p === "X" ? "O" : "X";
-}
-
 function emptyBoard() {
   return Array(9).fill(null);
 }
 
-function computeStatus({
-  mode,
-  aiThinking,
-  outcome,
-  xIsNext,
-  humanPlayer,
-  aiPlayer
-}) {
+/**
+ * Returns who should play first for a given game in a series.
+ * Game #1 starts with X, game #2 starts with O, and so on.
+ */
+function startingPlayerForGameNumber(gameNumber) {
+  return gameNumber % 2 === 1 ? "X" : "O";
+}
+
+function computeStatus({ mode, aiThinking, outcome, xIsNext, humanPlayer, aiPlayer }) {
   if (outcome.winner) return `Winner: ${outcome.winner}`;
   if (outcome.isDraw) return "It's a draw";
 
@@ -58,6 +55,12 @@ function computeStatus({
   return `Next player: ${xIsNext ? "X" : "O"}`;
 }
 
+function seriesWinnerFromScores({ xWins, oWins }) {
+  if (xWins >= 3) return "X";
+  if (oWins >= 3) return "O";
+  return null;
+}
+
 export default function App() {
   const [squares, setSquares] = useState(() => emptyBoard());
   const [xIsNext, setXIsNext] = useState(true);
@@ -67,9 +70,19 @@ export default function App() {
   const [difficulty, setDifficulty] = useState("Medium"); // "Easy" | "Medium" | "Hard"
   const [aiThinking, setAiThinking] = useState(false);
 
+  // Best-of-5 series controls/state
+  const [bestOf5Enabled, setBestOf5Enabled] = useState(false);
+  const [series, setSeries] = useState(() => ({
+    gameNumber: 1, // 1..5 (but series can end early when someone reaches 3)
+    xWins: 0,
+    oWins: 0,
+    draws: 0
+  }));
+
   const aiPlayer = useMemo(() => (humanPlayer === "X" ? "O" : "X"), [humanPlayer]);
 
   const outcome = useMemo(() => getGameOutcome(squares), [squares]);
+  const gameOver = outcome.winner != null || outcome.isDraw;
 
   const status = useMemo(
     () =>
@@ -85,13 +98,28 @@ export default function App() {
   );
 
   const currentPlayer = xIsNext ? "X" : "O";
-  const gameOver = outcome.winner != null || outcome.isDraw;
 
-  const boardDisabled = gameOver || (mode === "HUMAN_AI" && (aiThinking || currentPlayer === aiPlayer));
+  const seriesWinner = useMemo(() => {
+    if (!bestOf5Enabled) return null;
+    return seriesWinnerFromScores(series);
+  }, [bestOf5Enabled, series]);
 
-  function resetBoardOnly() {
+  const boardDisabled =
+    gameOver || (mode === "HUMAN_AI" && (aiThinking || currentPlayer === aiPlayer));
+
+  const canAdvanceSeries =
+    bestOf5Enabled && gameOver && !seriesWinner && series.gameNumber < 5;
+
+  const shouldShowStartNewSeries =
+    bestOf5Enabled && (seriesWinner != null || series.gameNumber >= 5) && gameOver;
+
+  /**
+   * Reset only the current board state (per requirement: does not reset series scores).
+   * PUBLIC_INTERFACE
+   */
+  function resetBoardOnly(nextStarter = "X") {
     setSquares(emptyBoard());
-    setXIsNext(true);
+    setXIsNext(nextStarter === "X");
     setAiThinking(false);
   }
 
@@ -110,6 +138,30 @@ export default function App() {
     setSquares(nextSquares);
     setXIsNext(!xIsNext);
   }
+
+  // Track outcome -> update scoreboard/series score once per finished game.
+  const lastCountedGameKeyRef = useRef(null);
+  useEffect(() => {
+    if (!gameOver) {
+      // Reset guard once game restarts.
+      lastCountedGameKeyRef.current = null;
+      return;
+    }
+
+    const key = bestOf5Enabled ? `series-${series.gameNumber}` : "single";
+    if (lastCountedGameKeyRef.current === key) return;
+
+    lastCountedGameKeyRef.current = key;
+
+    setSeries((prev) => {
+      // When best-of-5 is disabled we still keep "session scoreboard" in these fields.
+      // When enabled, these are also the series scoreboard.
+      if (outcome.winner === "X") return { ...prev, xWins: prev.xWins + 1 };
+      if (outcome.winner === "O") return { ...prev, oWins: prev.oWins + 1 };
+      if (outcome.isDraw) return { ...prev, draws: prev.draws + 1 };
+      return prev;
+    });
+  }, [gameOver, outcome.winner, outcome.isDraw, bestOf5Enabled, series.gameNumber]);
 
   // AI move effect: whenever it's AI's turn and game not over, make an AI move.
   useEffect(() => {
@@ -153,17 +205,113 @@ export default function App() {
     };
   }, [mode, xIsNext, squares, aiPlayer, humanPlayer, difficulty, gameOver]);
 
-  // If switching to Human vs AI and the AI should start, let the effect handle it.
+  // If switching to Human vs AI ensure thinking is cleared.
   useEffect(() => {
     if (mode !== "HUMAN_AI") return;
-    // Ensure thinking is cleared when changing mode/symbol.
     setAiThinking(false);
   }, [mode, humanPlayer]);
+
+  // When toggling best-of-5 ON, start a fresh series (but keep mode/difficulty/humanPlayer).
+  useEffect(() => {
+    if (!bestOf5Enabled) return;
+
+    setSeries({
+      gameNumber: 1,
+      xWins: 0,
+      oWins: 0,
+      draws: 0
+    });
+    resetBoardOnly("X");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bestOf5Enabled]);
+
+  // PUBLIC_INTERFACE
+  function handleNextGame() {
+    /** Advance to the next game in a best-of-5 series, alternating the starting player. */
+    if (!canAdvanceSeries) return;
+
+    setSeries((prev) => {
+      const nextGameNumber = prev.gameNumber + 1;
+      return { ...prev, gameNumber: nextGameNumber };
+    });
+
+    const nextStarter = startingPlayerForGameNumber(series.gameNumber + 1);
+    resetBoardOnly(nextStarter);
+  }
+
+  // PUBLIC_INTERFACE
+  function handleStartNewSeries() {
+    /** Start a new best-of-5 series (resets series scoreboard and game count, but keeps preferences). */
+    setSeries({
+      gameNumber: 1,
+      xWins: 0,
+      oWins: 0,
+      draws: 0
+    });
+    resetBoardOnly("X");
+  }
+
+  // PUBLIC_INTERFACE
+  function handleRestartGame() {
+    /** Restart just the current board (keeps series scoreboard and preferences). */
+    const starter = bestOf5Enabled
+      ? startingPlayerForGameNumber(series.gameNumber)
+      : "X";
+    resetBoardOnly(starter);
+  }
+
+  const seriesLabel = bestOf5Enabled
+    ? `Game ${series.gameNumber} of 5`
+    : "Scoreboard";
 
   return (
     <div className="app">
       <div className="card">
         <h1 className="title">Tic Tac Toe</h1>
+
+        <div className="scoreboard" aria-label="Scoreboard">
+          <div className="scoreHeader">
+            <div className="scoreTitle">{seriesLabel}</div>
+            <label className="toggle" aria-label="Toggle best of 5 series">
+              <input
+                type="checkbox"
+                checked={bestOf5Enabled}
+                onChange={(e) => setBestOf5Enabled(e.target.checked)}
+              />
+              <span>Best-of-5</span>
+            </label>
+          </div>
+
+          <div className="scoreRow">
+            <div className="scorePill">
+              <span className="scoreKey">X</span>
+              <span className="scoreVal">{series.xWins}</span>
+            </div>
+            <div className="scorePill">
+              <span className="scoreKey">O</span>
+              <span className="scoreVal">{series.oWins}</span>
+            </div>
+            <div className="scorePill">
+              <span className="scoreKey">Draws</span>
+              <span className="scoreVal">{series.draws}</span>
+            </div>
+          </div>
+
+          {bestOf5Enabled && (
+            <div className="seriesMeta" aria-live="polite">
+              {seriesWinner ? (
+                <div className="seriesBanner">
+                  Series winner: <strong>{seriesWinner}</strong> (first to 3)
+                </div>
+              ) : (
+                <div className="seriesSmall">
+                  {`X ${series.xWins} - O ${series.oWins}`}
+                  {series.draws > 0 ? ` • Draws ${series.draws}` : ""}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="statusRow">
           <div className="status" aria-live="polite">
@@ -217,10 +365,22 @@ export default function App() {
 
         <Board squares={squares} onPlay={handlePlay} disabled={boardDisabled} />
 
-        <div className="footer">
-          <button className="button" onClick={resetBoardOnly}>
-            Restart
+        <div className="footer footerMulti">
+          <button className="button" onClick={handleRestartGame}>
+            Restart Game
           </button>
+
+          {bestOf5Enabled && canAdvanceSeries && (
+            <button className="button buttonPrimary" onClick={handleNextGame}>
+              Next Game
+            </button>
+          )}
+
+          {bestOf5Enabled && shouldShowStartNewSeries && (
+            <button className="button buttonPrimary" onClick={handleStartNewSeries}>
+              Start New Series
+            </button>
+          )}
         </div>
 
         <div className="hint">
